@@ -214,11 +214,8 @@ rules:
   - GEOSITE,private,DIRECT
   - GEOIP,LAN,DIRECT
   
-# 👇 3.为你量身定制的 8.155.3.90 端口精细分流 👇
-  # 优先匹配：如果是 22 端口，强制直连 (DIRECT) 保证传文件和 SSH 稳定
-  - AND,((IP-CIDR,8.155.3.90/32,no-resolve),(DST-PORT,22)),DIRECT
-  # 兜底匹配：只要是这个 IP (除了 22 端口之外的如 3306 等)，统统走香港加速
-  - IP-CIDR,8.155.3.90/32,香港节点,no-resolve
+# 👇 3.为你量身定制的 8.155.3.90
+  - IP-CIDR,8.155.3.90/32,香港节点
 
   # --- 4. 专属应用映射 ---
   - RULE-SET,AI,AI合集
