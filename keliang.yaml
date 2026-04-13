@@ -10,10 +10,9 @@ log-level: info
 external-controller: 127.0.0.1:9090
 secret: ""
 
-# --- 性能优化 (依然保留，提升底层并发处理速度) ---
+# --- 极致秒开参数 ---
 unified-delay: true
 tcp-concurrent: true
-keep-alive-interval: 1800
 find-process-mode: strict
 
 profile:
@@ -21,7 +20,7 @@ profile:
   store-fake-ip: true
 
 geodata-mode: true
-geodata-loader: standard
+geodata-loader: memconservative  # 优化内存占用
 geo-auto-update: true
 geo-update-interval: 24
 geox-url:
@@ -38,6 +37,9 @@ tun:
   stack: mixed
   auto-route: true
   auto-detect-interface: true
+  dns-hijack:
+    - any:53
+    - tcp://any:53
   gso: true
   gso-max-size: 65536
 
@@ -53,14 +55,16 @@ sniffer:
       ports: [80, '8080-8880']
     QUIC:
       ports: [443, 8443]
+  # 移除了流媒体，只保留基础大厂嗅探
   force-domain:
-    - '+.netflix.com'
-    - '+.disneyplus.com'
+    - '+.google.com'
+    - '+.youtube.com'
+    - '+.facebook.com'
   skip-domain:
     - 'Mijia Cloud'
 
 # =========================================
-# 3. 海外纯净极速 DNS 配置 (抛弃国内 DNS)
+# 3. 海外纯净极速 DNS (无国内污染防线)
 # =========================================
 dns:
   enable: true
@@ -71,10 +75,10 @@ dns:
   use-hosts: true
   use-system-hosts: true
   respect-rules: true
-  prefer-h3: true             # 海外网络环境好，开启 HTTP/3 DNS 查询更快
+  prefer-h3: false
   cache-algorithm: arc
 
-  # 全面拥抱国际顶级公共 DNS，享受毫秒级解析
+  # 全面拥抱国际顶级公共 DNS
   default-nameserver:
     - 1.1.1.1
     - 8.8.8.8
@@ -82,7 +86,10 @@ dns:
     - https://cloudflare-dns.com/dns-query
     - https://dns.google/dns-query
   
-  # 移除了国内复杂的 fallback 和 policy，海外不需要区分污染
+  # 必须保留，供解析节点使用防崩溃
+  proxy-server-nameserver:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
 
   fake-ip-filter-mode: rule
   fake-ip-filter:
@@ -110,77 +117,77 @@ proxy-providers:
       url: "https://www.gstatic.com/generate_204"
 
 # =========================================
-# 5. 策略组编排 (专为海外场景设计)
+# 5. 极简策略组 (专为海外开放网络定制)
 # =========================================
 proxy-groups:
-  # --- 地区正则过滤组 (基础组件) ---
-  - name: 🇨🇳 回国节点
-    type: url-test
-    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China_Map.png
+  - name: 节点选择
+    type: select
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/adjust.svg
     use: [All]
-    filter: 回国|上海|北京|广州|深圳|CN|China
-    url: "https://wifi.vivo.com.cn/generate_204"
-    interval: 300
-  - name: 🇭🇰 香港节点
+    proxies: [DIRECT, 香港节点, 美国节点, 日本节点, 台湾节点, 新加坡节点]
+
+  # 纯净的手动选节点层
+  - name: 手动选择
+    type: select
+    icon: https://www.clashverge.dev/assets/icons/link.svg
+    use: [All]
+
+  # --- 基础国家筛选组 ---
+  - name: 香港节点
     type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
     use: [All]
     filter: 港|🇭🇰|HK|(?i)Hong
     url: "https://www.gstatic.com/generate_204"
     interval: 300
-  - name: 🇺🇸 美国节点
+    tolerance: 50
+  - name: 美国节点
     type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
     use: [All]
     filter: 美|洛杉矶|🇺🇸|US|(?i)States|American
     url: "https://www.gstatic.com/generate_204"
     interval: 300
-  - name: 🇯🇵 日本节点
+    tolerance: 50
+  - name: 日本节点
     type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
     use: [All]
     filter: 日|东京|🇯🇵|JP|(?i)Japan
     url: "https://www.gstatic.com/generate_204"
     interval: 300
-  - name: 🇹🇼 台湾节点
+    tolerance: 50
+  - name: 台湾节点
     type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
     use: [All]
     filter: 台|🇹🇼|TW|(?i)Taiwan
     url: "https://www.gstatic.com/generate_204"
     interval: 300
+    tolerance: 50
+  - name: 新加坡节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+    use: [All]
+    filter: 新加坡|🇸🇬|SG|(?i)Singapore
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
 
-  # --- 核心场景分组 ---
-  - name: 📺 穿梭回国
-    type: select
-    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Bilibili.png
-    # 首选回国专线，如果没有，用香港或台湾节点顶替解锁
-    proxies: [🇨🇳 回国节点, 🇭🇰 香港节点, 🇹🇼 台湾节点, DIRECT]
-
-  - name: 🌍 跨区解锁
-    type: select
-    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
-    # 用来强制看美区 Netflix 或使用受限的 AI
-    proxies: [DIRECT, 🇺🇸 美国节点, 🇯🇵 日本节点, 🇭🇰 香港节点, 🇹🇼 台湾节点]
-
-  - name: 🐼 国内网站
-    type: select
-    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China.png
-    # 默认直连（海外连国内普通网站通常没问题）。如果太卡，手动切到回国节点加速。
-    proxies: [DIRECT, 🇨🇳 回国节点, 🇭🇰 香港节点]
-
-  - name: 🤖 AI合集
+  # --- 核心应用组 ---
+  - name: AI合集
     type: select
     icon: https://raw.githubusercontent.com/Koolson/Qure/63be653774a6a83cd8e475a7b65f1ed68b9a0093/IconSet/Color/AI.png
-    proxies: [DIRECT, 🇺🇸 美国节点, 🇯🇵 日本节点]
+    # 第一顺位保留 DIRECT，嵌套手动选择，并备齐常用跨区节点
+    proxies: [DIRECT, 手动选择, 节点选择, 美国节点, 日本节点, 台湾节点, 新加坡节点, 香港节点]
 
-  - name: 🐟 漏网之鱼
+  - name: 漏网之鱼
     type: select
     icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/fish.svg
-    proxies: [DIRECT, 🌍 跨区解锁] # 兜底必须默认 DIRECT！
+    proxies: [DIRECT, 节点选择, 手动选择]
 
 # =========================================
-# 6. 第三方规则集引用
+# 6. 第三方规则集引用 (极其干净)
 # =========================================
 rule-providers:
   AI:
@@ -190,52 +197,35 @@ rule-providers:
     url: "https://raw.githubusercontent.com/iab0x00/ProxyRules/main/Rule/AI.txt"
     path: ./ruleset/AI.txt
     interval: 86400
-  Netflix:
-    type: http
-    behavior: classical
-    format: text
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list"
-    path: ./ruleset/Netflix.txt
-    interval: 86400
-  Disney:
-    type: http
-    behavior: classical
-    format: text
-    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.list"
-    path: ./ruleset/Disney.txt
-    interval: 86400
 
 # =========================================
-# 7. 终极反向路由规则 (白名单模式)
+# 7. 终极极简路由规则
 # =========================================
 rules:
-  # --- 1. 进程级白名单 (这些工具直连最快) ---
+  # --- 1. 进程级白名单 ---
   - PROCESS-NAME,SunloginClient.exe,DIRECT
   - PROCESS-NAME,ToDesk.exe,DIRECT
   - PROCESS-NAME,TeamViewer.exe,DIRECT
   - PROCESS-NAME,wemeetapp.exe,DIRECT
   - PROCESS-NAME,tailscaled.exe,DIRECT
+  - PROCESS-NAME,zerotier-one.exe,DIRECT
 
   # --- 2. 局域网优先直连 ---
   - GEOSITE,private,DIRECT
   - GEOIP,LAN,DIRECT
   
-  # --- 3. 精准回国解锁 (音视频版权) ---
-  - GEOSITE,bilibili,📺 穿梭回国
-  - GEOSITE,iqiyi,📺 穿梭回国
-  - GEOSITE,tencent-video,📺 穿梭回国
-  - GEOSITE,netease,📺 穿梭回国
-  - GEOSITE,kugou,📺 穿梭回国
-  - GEOSITE,kuwo,📺 穿梭回国
+  # --- 3. 🎯 你的专属独立路由 ---
+  # 精准抓取该域名，强行指定走【香港节点】策略组
+  - DOMAIN-SUFFIX,lege.jishutech.cn,香港节点
 
-  # --- 4. 跨区解锁特定海外服务 ---
-  - RULE-SET,Netflix,🌍 跨区解锁
-  - RULE-SET,Disney,🌍 跨区解锁
-  - RULE-SET,AI,🤖 AI合集
+  # --- 4. 专属应用映射 ---
+  - RULE-SET,AI,AI合集
 
-  # --- 5. 国内普通网站与 IP 智能分流 ---
-  - GEOSITE,cn,🐼 国内网站
-  - GEOIP,CN,🐼 国内网站
+  # --- 5. 泛域名全直连 (海外网络环境优势) ---
+  # 无论是国内网站还是普通国外网站，全部走当地物理宽带
+  - GEOSITE,cn,DIRECT
+  - GEOSITE,geolocation-!cn,DIRECT
+  - GEOIP,CN,DIRECT
 
-  # --- 6. 终极放行 (一切未知流量全部走本地宽带直连！) ---
-  - MATCH,🐟 漏网之鱼
+  # --- 6. 终极兜底 ---
+  - MATCH,漏网之鱼
