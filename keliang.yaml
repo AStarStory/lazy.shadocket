@@ -218,7 +218,7 @@ rules:
   # 专属域名走香港
   - DOMAIN-SUFFIX,lege.jishutech.cn,香港节点
   # 专属 IP 走香港 (/32 代表精确匹配这一个单点 IP，no-resolve 提升匹配速度)
-  - IP-CIDR,8.155.3.90/32,手动选择,no-resolve
+  - IP-CIDR,8.155.3.90/32,香港节点,no-resolve
 
   # --- 4. 专属应用映射 ---
   - RULE-SET,AI,AI合集
